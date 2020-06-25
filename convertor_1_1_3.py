@@ -91,7 +91,7 @@ def makesvg(drawings, dirpath, msg=None):
                 msg = str(draw_file).replace(dirpath, '')
                 logger.exception("Има проблем с файл %s", msg)
             try:
-                shutil.move(svg_output, "convertor/GlassPurchaseOrders/drawing_pdf")
+                shutil.move(svg_output, dirpath + "/GlassPurchaseOrders/drawing_pdf")
             except:
                 msg = str(svg_output).replace(dirpath, '')
                 logger.exception("Има проблем с файл %s", msg)
@@ -99,7 +99,7 @@ def makesvg(drawings, dirpath, msg=None):
 
 
 def makepdf(dirpath):
-    svg_file = glob.glob("convertor/GlassPurchaseOrders/drawing_pdf/*.svg")
+    svg_file = glob.glob(dirpath + "/GlassPurchaseOrders/drawing_pdf/*.svg")
     if len(svg_file) != 0:
         drawingsvg = svg_file
         for d in drawingsvg:
@@ -126,6 +126,96 @@ def makepdf(dirpath):
         pass
 
 
+def soupCooking(member, dirpath, xfiles, csv_output):
+    try:
+        mem = member
+        instkind = member.findPrevious('deliverykind')
+        item = member.findPrevious('item_number')
+        field = member.findPrevious('field_nr')
+        desc = member.findPrevious('product_des')
+        glass_hight = member.findNext('glassheight')
+        glass_width = member.findNext('glasswidth')
+        spacer = member.findNext('spacer').key
+        if member.findNext('archinformation').isSelfClosing:
+            arch = 0
+            scetch = ''
+        else:
+            arch = 1
+            scetch = member.findPrevious('sketch')
+            x = member.findNext('archdata').x_dim
+            y = member.findNext('archdata').y_dim
+            radius = member.findNext('archdata').radius
+            rise = member.findNext('archdata').rise
+        if member.findNext('glass_sashbar').isSelfClosing:
+            spros = 0
+            if scetch != '':
+                scetch = scetch
+            else:
+                pass
+        else:
+            spros = 1
+            scetch = member.findPrevious('sketch')
+            sbkey = member.findNext('sashbardata').sashbar_key
+            sbdesc = member.findNext('sashbardata').sashbar_text
+        clap = member.findNext('pressure_balance')
+        istherescetch = member.findNext('dxfsketch').isSelfClosing
+        if arch == 0 and spros == 0 and istherescetch is True:
+            pass
+        else:
+            docnum = member.findPrevious('document_number')
+            logger.info(
+                "Ще бъдат конвертирани допълнителни чертежи към заявка:" + docnum.text + ", моля проверете в PDF директория")
+            drawings = glob.glob(dirpath + "/*.dxf")
+            if len(drawings) > 0:
+                makesvg(drawings, dirpath)
+                makepdf(dirpath)
+            else:
+                logger.error(str(scetch.text + ".dxf") + ' не бе намерен в целевата директория')
+    except AttributeError:
+        logger.error("Проверете xml файлa за липсващи атрибути")
+        logger.exception("Липсващи атрибути, %s",
+                             'Проверете xml файл ' + str(xfiles).replace(dirpath, ''))
+        pass
+
+        mem['item'] = item.text
+        mem['field'] = field.text
+        if clap is None or clap.text == 'false':
+            mem['desc'] = desc.text
+        else:
+            mem['desc'] = desc.text + ' С КЛАПАН'
+            mem['height'] = glass_hight.text
+            mem['width'] = glass_width.text
+        if spacer is None:
+            mem['spacer'] = ""
+        else:
+            mem['spacer'] = str(spacer.text).strip()
+        if arch == 1 and spros == 0:
+            mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(float(radius.text) / 1000) + " " + "Rise = " + str(float(rise.text) / 1000) + " " + "X = " + str(float(x.text) / 1000) + " " + "Y = " + str(float(y.text) / 1000)
+            mem['sprosinfo'] = ''
+        elif arch == 0 and spros == 1:
+            mem['archinfo'] = ''
+            mem['sprosinfo'] = "Scetch No.:" + str(
+                scetch.text) + ' / ' + sbkey.text + ' - ' + sbdesc.text
+        elif arch == 1 and spros == 1:
+            mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(
+                float(radius.text) / 1000) + " " + "Rise = " + str(
+                float(rise.text) / 1000) + " " + "X = " + str(
+                float(x.text) / 1000) + " " + "Y = " + str(
+                float(y.text) / 1000)
+            mem['sprosinfo'] = sbkey.text + ' - ' + sbdesc.text
+        elif arch == 0 and spros == 0:
+            mem['archinfo'] = ''
+            mem['sprosinfo'] = ''
+        if instkind.text == 'MONTAGEART_INFERTIGUNG':
+            mem['barcode'] = mem.text
+        else:
+            mem['barcode'] = ''
+        row = {'ITEM': mem['item'], 'DESCRIPTION': mem['desc'], 'HEIGHT': mem['height'], 'WIDTH': mem['width'],
+                   'ALU_spacer': mem['spacer'], 'BARCODE': mem['barcode'], 'FIELD': mem['field'],
+                   'Special_info': mem['archinfo'] + ' ' + mem['sprosinfo']}
+        csv_output.writerow(row)
+
+
 def loadandconvert(xml_file, dirpath):
     filename = xml_file
     for f in filename:
@@ -146,102 +236,16 @@ def loadandconvert(xml_file, dirpath):
         cfiles = str(file).replace("['", "").replace("']", "").replace(".xml", ".csv")
         logger.info('Отварям файл: ')
         try:
-            with open(xfiles, encoding='UTF-8') as f_input, open(str(cfiles).replace(dirpath, "convertor/GlassPurchaseOrders/mawi_csv/"), 'w',encoding='UTF-8',newline='') as f_output:
+            with open(xfiles, encoding='UTF-8') as f_input, open(str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/"), 'w',encoding='UTF-8',newline='') as f_output:
                 csv_output: DictWriter = csv.DictWriter(f_output, fieldnames=fieldnames, dialect='unix')
                 csv_output.writeheader()
 
                 xml = f_input.read()
                 soup = BeautifulSoup(xml, 'xml')
-
                 for member in soup.findChildren('barcode_l'):
-                    try:
-                        mem = member
-                        instkind = member.findPrevious('deliverykind')
-                        item = member.findPrevious('item_number')
-                        field = member.findPrevious('field_nr')
-                        desc = member.findPrevious('product_des')
-                        glass_hight = member.findNext('glassheight')
-                        glass_width = member.findNext('glasswidth')
-                        spacer = member.findNext('spacer').key
-                        if member.findNext('archinformation').isSelfClosing:
-                            arch = 0
-                            scetch = ''
-                        else:
-                            arch = 1
-                            scetch = member.findPrevious('sketch')
-                            x = member.findNext('archdata').x_dim
-                            y = member.findNext('archdata').y_dim
-                            radius = member.findNext('archdata').radius
-                            rise = member.findNext('archdata').rise
-                        if member.findNext('glass_sashbar').isSelfClosing:
-                            spros = 0
-                            if scetch != '':
-                                scetch = scetch
-                            else:
-                                pass
-                        else:
-                            spros = 1
-                            scetch = member.findPrevious('sketch')
-                            sbkey = member.findNext('sashbardata').sashbar_key
-                            sbdesc = member.findNext('sashbardata').sashbar_text
-                        clap = member.findNext('pressure_balance')
-                        istherescetch = member.findNext('dxfsketch').isSelfClosing
-                        if arch == 0 and spros == 0 and istherescetch is True:
-                            pass
-                        else:
-                            docnum = member.findPrevious('document_number')
-                            logger.info("Ще бъдат конвертирани допълнителни чертежи към заявка:" + docnum.text + ", моля проверете в PDF директория")
-                            drawings = glob.glob(dirpath + "/*.dxf")
-                            if len(drawings) > 0:
-                                makesvg(drawings, dirpath)
-                                makepdf(dirpath)
-                            else:
-                                logger.error(str(scetch.text + ".dxf") + ' не бе намерен в целевата директория')
-                    except AttributeError:
-                        logger.error("Проверете xml файлa за липсващи атрибути")
-                        logger.exception("Липсващи атрибути, %s",
-                                        'Проверете xml файл ' + str(xfiles).replace(dirpath, ''))
-                        pass
+                   soupCooking(member, dirpath, xfiles, csv_output)
 
-                    mem['item'] = item.text
-                    mem['field'] = field.text
-                    if clap is None or clap.text == 'false':
-                        mem['desc'] = desc.text
-                    else:
-                        mem['desc'] = desc.text + ' С КЛАПАН'
-                    mem['height'] = glass_hight.text
-                    mem['width'] = glass_width.text
-                    if spacer is None:
-                        mem['spacer'] = ""
-                    else:
-                        mem['spacer'] = str(spacer.text).strip()
-                    if arch == 1 and spros == 0:
-                        mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(
-                            float(radius.text) / 1000) + " " + "Rise = " + str(
-                            float(rise.text) / 1000) + " " + "X = " + str(
-                            float(x.text) / 1000) + " " + "Y = " + str(
-                            float(y.text) / 1000)
-                        mem['sprosinfo'] = ''
-                    elif arch == 0 and spros == 1:
-                        mem['archinfo'] = ''
-                        mem['sprosinfo'] = "Scetch No.:" + str(
-                            scetch.text) + ' / ' + sbkey.text + ' - ' + sbdesc.text
-                    elif arch == 1 and spros == 1:
-                        mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(
-                            float(radius.text) / 1000) + " " + "Rise = " + str(
-                            float(rise.text) / 1000) + " " + "X = " + str(
-                            float(x.text) / 1000) + " " + "Y = " + str(
-                            float(y.text) / 1000)
-                        mem['sprosinfo'] = sbkey.text + ' - ' + sbdesc.text
-                    elif arch == 0 and spros == 0:
-                        mem['archinfo'] = ''
-                        mem['sprosinfo'] = ''
-                    if instkind.text == 'MONTAGEART_INFERTIGUNG':
-                        mem['barcode'] = mem.text
-                    else:
-                        mem['barcode'] = ''
-                    row = {'ITEM': mem['item'], 'DESCRIPTION': mem['desc'], 'HEIGHT': mem['height'],'WIDTH': mem['width'],'ALU_spacer': mem['spacer'], 'BARCODE': mem['barcode'], 'FIELD': mem['field'],'Special_info': mem['archinfo'] + ' ' + mem['sprosinfo']}
-                    csv_output.writerow(row)
+
         except:
             logger.exception('Грешка при обработка на файл / %s',str(xfiles).replace(dirpath, '') + 'моля опитайте отново')
             pass
@@ -256,8 +260,8 @@ def sortfiles(file, dirpath, xfiles, cfiles):
 
         try:
             try:
-                os.rename(str(cfiles).replace(dirpath, "convertor/GlassPurchaseOrders/mawi_csv/"),
-                          str(cfiles).replace(dirpath, "convertor/GlassPurchaseOrders/mawi_csv/").replace(".csv",
+                os.rename(str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/"),
+                          str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/").replace(".csv",
                                                                                                           " - " + str(
                                                                                                               deliveryinfo.text) + ".csv"))
                 logger.info("Документ:" + str(cfiles).replace(dirpath, '') + " бе конвертиран успешно")
@@ -293,8 +297,8 @@ def sortfiles(file, dirpath, xfiles, cfiles):
         pass
 
 
-def gotodir():
-    os.system("start convertor\GlassPurchaseOrders")
+def gotodir(dirpath):
+    os.system("start" + dirpath + "\GlassPurchaseOrders")
 
 
 def deloldlog(days=0):

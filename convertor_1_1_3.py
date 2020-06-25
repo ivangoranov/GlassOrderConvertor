@@ -76,26 +76,26 @@ class GUI(tk.Frame):
 #
 def makesvg(drawings, dirpath, msg=None):
     for d in drawings:
-            draw_file = d.split(',')
-            dxf_input = (str(draw_file).replace("['", "").replace("']", ""))
-            svg_output = (
-                str(draw_file).replace("['", "").replace("']", "").replace(".dxf", ".svg"))
+        draw_file = d.split(',')
+        dxf_input = (str(draw_file).replace("['", "").replace("']", ""))
+        svg_output = (
+            str(draw_file).replace("['", "").replace("']", "").replace(".dxf", ".svg"))
+        try:
+            save_svg_from_dxf(str(dxf_input), size=6000)
             try:
-                save_svg_from_dxf(str(dxf_input), size=6000)
-                try:
-                    shutil.move(dxf_input, dirpath + '/success/')
-                except:
-                    msg = str(dxf_input).replace(dirpath, '')
-                    logger.exception("Има проблем с файл %s", msg)
+                shutil.move(dxf_input, dirpath + '/success/')
             except:
-                msg = str(draw_file).replace(dirpath, '')
+                msg = str(dxf_input).replace(dirpath, '')
                 logger.exception("Има проблем с файл %s", msg)
-            try:
-                shutil.move(svg_output, dirpath + "/GlassPurchaseOrders/drawing_pdf")
-            except:
-                msg = str(svg_output).replace(dirpath, '')
-                logger.exception("Има проблем с файл %s", msg)
-            return msg
+        except:
+            msg = str(draw_file).replace(dirpath, '')
+            logger.exception("Има проблем с файл %s", msg)
+        try:
+            shutil.move(svg_output, dirpath + "/GlassPurchaseOrders/drawing_pdf")
+        except:
+            msg = str(svg_output).replace(dirpath, '')
+            logger.exception("Има проблем с файл %s", msg)
+        return msg
 
 
 def makepdf(dirpath):
@@ -126,7 +126,8 @@ def makepdf(dirpath):
         pass
 
 
-def soupCooking(member, dirpath, xfiles, csv_output):
+def soup_cooking(member, dirpath, xfiles, csv_output):
+    global mem, item, field, clap, desc, glass_hight, glass_width, spacer, arch, spros, scetch, radius, rise, x, y, sbkey, sbdesc, instkind
     try:
         mem = member
         instkind = member.findPrevious('deliverykind')
@@ -174,7 +175,7 @@ def soupCooking(member, dirpath, xfiles, csv_output):
     except AttributeError:
         logger.error("Проверете xml файлa за липсващи атрибути")
         logger.exception("Липсващи атрибути, %s",
-                             'Проверете xml файл ' + str(xfiles).replace(dirpath, ''))
+                         'Проверете xml файл ' + str(xfiles).replace(dirpath, ''))
         pass
 
         mem['item'] = item.text
@@ -190,7 +191,9 @@ def soupCooking(member, dirpath, xfiles, csv_output):
         else:
             mem['spacer'] = str(spacer.text).strip()
         if arch == 1 and spros == 0:
-            mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(float(radius.text) / 1000) + " " + "Rise = " + str(float(rise.text) / 1000) + " " + "X = " + str(float(x.text) / 1000) + " " + "Y = " + str(float(y.text) / 1000)
+            mem['archinfo'] = "Scetch No.:" + str(scetch.text) + " Radius = " + str(
+                float(radius.text) / 1000) + " " + "Rise = " + str(float(rise.text) / 1000) + " " + "X = " + str(
+                float(x.text) / 1000) + " " + "Y = " + str(float(y.text) / 1000)
             mem['sprosinfo'] = ''
         elif arch == 0 and spros == 1:
             mem['archinfo'] = ''
@@ -211,8 +214,8 @@ def soupCooking(member, dirpath, xfiles, csv_output):
         else:
             mem['barcode'] = ''
         row = {'ITEM': mem['item'], 'DESCRIPTION': mem['desc'], 'HEIGHT': mem['height'], 'WIDTH': mem['width'],
-                   'ALU_spacer': mem['spacer'], 'BARCODE': mem['barcode'], 'FIELD': mem['field'],
-                   'Special_info': mem['archinfo'] + ' ' + mem['sprosinfo']}
+               'ALU_spacer': mem['spacer'], 'BARCODE': mem['barcode'], 'FIELD': mem['field'],
+               'Special_info': mem['archinfo'] + ' ' + mem['sprosinfo']}
         csv_output.writerow(row)
 
 
@@ -236,20 +239,22 @@ def loadandconvert(xml_file, dirpath):
         cfiles = str(file).replace("['", "").replace("']", "").replace(".xml", ".csv")
         logger.info('Отварям файл: ')
         try:
-            with open(xfiles, encoding='UTF-8') as f_input, open(str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/"), 'w',encoding='UTF-8',newline='') as f_output:
+            with open(xfiles, encoding='UTF-8') as f_input, open(
+                    str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/"), 'w', encoding='UTF-8',
+                    newline='') as f_output:
                 csv_output: DictWriter = csv.DictWriter(f_output, fieldnames=fieldnames, dialect='unix')
                 csv_output.writeheader()
 
                 xml = f_input.read()
                 soup = BeautifulSoup(xml, 'xml')
                 for member in soup.findChildren('barcode_l'):
-                   soupCooking(member, dirpath, xfiles, csv_output)
-
-
+                    soup_cooking(member, dirpath, xfiles, csv_output)
         except:
-            logger.exception('Грешка при обработка на файл / %s',str(xfiles).replace(dirpath, '') + 'моля опитайте отново')
+            logger.exception('Грешка при обработка на файл / %s',
+                             str(xfiles).replace(dirpath, '') + 'моля опитайте отново')
             pass
         sortfiles(file, dirpath, xfiles, cfiles)
+
 
 def sortfiles(file, dirpath, xfiles, cfiles):
     try:
@@ -257,16 +262,17 @@ def sortfiles(file, dirpath, xfiles, cfiles):
             xml = f_input.read()
             soup = BeautifulSoup(xml, 'xml')
             deliveryinfo = soup.find('order_remark_mawi')
-
+            deliverydate = soup.find('glasses_delivery_date_mawi').text
+            deliverydate_obj = datetime.strptime(deliverydate, '%Y-%m-%d')
+            deliverydatestr = deliverydate_obj.strftime('%d.%m.%Y')
+            mawiorderno = str(cfiles)[-13:]
         try:
             try:
                 os.rename(str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/"),
-                          str(cfiles).replace(dirpath, dirpath + "/GlassPurchaseOrders/mawi_csv/").replace(".csv",
-                                                                                                          " - " + str(
-                                                                                                              deliveryinfo.text) + ".csv"))
+                          (dirpath + "/GlassPurchaseOrders/mawi_csv/" + "Order_" + str(deliveryinfo.text) + "_" + str(deliverydatestr) + str(mawiorderno)))
                 logger.info("Документ:" + str(cfiles).replace(dirpath, '') + " бе конвертиран успешно")
             except FileExistsError:
-                logger.info("Документ:" + str(cfiles).replace(dirpath,'') + 'вече съществува в целевата директория')
+                logger.info("Документ:" + str(cfiles).replace(dirpath, '') + 'вече съществува в целевата директория')
                 pass
             except:
                 logger.info("Документ:" + str(cfiles).replace(dirpath,
@@ -388,7 +394,6 @@ def report_error():
     helpdesk = 'ivan.goranov@teolino.eu'
     # Import the email modules we'll need
     from email.mime.text import MIMEText
-
 
     fp = open(str(textfile).replace('<Logger ', './').replace(' (INFO)>', '.log'), 'r', encoding='utf-8')
     # Create a text/plain message

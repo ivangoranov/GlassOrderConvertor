@@ -2,6 +2,7 @@ pyinstaller --distpath ./ --noconfirm --log-level WARN ^
     -F -n GOC --windowed ^
     --add-data="Lib\site-packages\tinycss2\VERSION;." ^
     --hidden-import ezdxf ^
+    --hidden-import MainProgramDefinitions ^
     --hidden-import pkg_resources.py2_warn ^
     --hidden-import pyi_rth_pkgres ^
     --hidden-import svgwrite -d bootloader^

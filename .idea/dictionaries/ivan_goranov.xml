@@ -4,20 +4,25 @@
       <w>archdata</w>
       <w>archinfo</w>
       <w>archinformation</w>
+      <w>cfile</w>
       <w>cfiles</w>
       <w>convertme</w>
       <w>convertor</w>
       <w>deliverydate</w>
+      <w>deliverydatestr</w>
       <w>deliveryinfo</w>
       <w>dirpath</w>
       <w>docnum</w>
       <w>drawingsvg</w>
       <w>dxfsketch</w>
+      <w>finaldirpath</w>
+      <w>istherescetch</w>
       <w>loadandconvert</w>
       <w>logtime</w>
       <w>makepdf</w>
       <w>makesvg</w>
       <w>mawi</w>
+      <w>mawiorderno</w>
       <w>orderdesc</w>
       <w>orderfinaldate</w>
       <w>reportcsv</w>

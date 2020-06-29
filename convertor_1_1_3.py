@@ -14,6 +14,7 @@ from MainProgramDefinitions import soup_cooking, sortfiles
 
 global dirpath, file, finaldirpath
 
+
 class TextHandler(logging.Handler):
     """This class allows you to log to a Tkinter Text or ScrolledText widget"""
 
@@ -44,7 +45,6 @@ class GUI(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.root = parent
         self.generate_button = tk.Button(self.root, text="КОНВЕРТИРАНЕ ОТ ДИРЕКТОРИЯ", command=main)
-        self.goto_button = tk.Button(self.root, text='ОТВОРИ ГОТОВИ ЗАЯВКИ', command=gotodir)
         self.report_error = tk.Button(self.root, text="ДОКЛАДВАЙ ПРОБЛЕМ", command=report_error)
         self.text_handler = None
         self.build_gui()
@@ -53,7 +53,6 @@ class GUI(tk.Frame):
         self.root.title('GlassOrderConvertor')
         self.root.wm_iconbitmap('logo.ico')
         self.generate_button.grid(row=0, column=0)
-        self.goto_button.grid(row=0, column=1)
 
         # Add ScrolledText widget to display logging
         st = ScrolledText()
@@ -61,7 +60,7 @@ class GUI(tk.Frame):
         st.grid(row=1, sticky='ew', columnspan=2)
 
         # Add button report_error
-        self.report_error.grid(row=3, columnspan=2)
+        self.report_error.grid(row=0, columnspan=2)
 
         # Create textlogger
         self.text_handler = TextHandler(st)
@@ -74,25 +73,29 @@ class GUI(tk.Frame):
 def main():
     dirpath = str(tk.filedialog.askdirectory()).replace("['", "").replace("']", "")
     xml_file = glob.glob(dirpath + "/*.xml")
-    for x in xml_file:
-        file = x
-        logger.info('Отварям файл:  %s', str(file).replace(dirpath, ""))
-        try:
-            soup_cooking(file, dirpath)
-        except:
-            logger.exception("Настъпи неочаквана грешка %s", "Моля проверете заявките")
-            pass
-        try:
-            sortfiles(file, dirpath)
-            logger.info("Документ:" + str(file).replace(dirpath, '') + " бе конвертиран успешно")
-        except:
-            logger.exception('Грешка при местене на файл / %s', str(file).replace(dirpath, '') + 'моля опитайте отново')
-            pass
+    if len(xml_file) >= 1:
+        for x in xml_file:
+            file = x
+            logger.info('Отварям файл:  %s', str(file).replace(dirpath, ""))
+            try:
+                soup_cooking(file, dirpath)
+            except:
+                logger.exception("Настъпи неочаквана грешка %s", "Моля проверете заявките")
+                pass
+            try:
+                sortfiles(file, dirpath)
+                logger.info("Документ:" + str(file).replace(dirpath, '') + " бе конвертиран успешно")
+            except:
+                logger.exception('Грешка при местене на файл / %s', str(file).replace(dirpath, '') + 'моля опитайте отново')
+                pass
+        gotodir(dirpath)
+    else:
+        logger.info("Не бяха открити документи в целевата директория: %s", dirpath)
+        return dirpath
 
 
-
-def gotodir():
-    os.system("start " + str(finaldirpath) + "\GlassPurchaseOrders")
+def gotodir(dirpath):
+    os.system("start " + str(dirpath) + "/GlassPurchaseOrders/")
 
 
 ################################################################################

@@ -5,13 +5,11 @@ import datetime
 import glob
 import csv
 import os
-import shutil
 import time
 from datetime import datetime
 from csv import DictWriter
 from bs4 import BeautifulSoup
 from dxf2svg.pycore import save_svg_from_dxf
-from logger import logger
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 
@@ -38,7 +36,7 @@ def makepdf(dirpath):
         os.remove(svg_output)
 
 
-def soup_cooking(file, dirpath, dxf=False):
+def soup_cooking(file, dirpath, dxf=False, msg=None):
     global item, field, clap, desc, glass_hight, glass_width, spacer, arch, spros, scetch, radius, rise, x, y, sbkey, sbdesc, instkind
     fields = [
         "ITEM",
@@ -94,15 +92,14 @@ def soup_cooking(file, dirpath, dxf=False):
                 pass
             else:
                 docnum = member.findPrevious('document_number')
-                logger.info(
-                    "Ще бъдат конвертирани допълнителни чертежи към заявка:" + docnum.text + ", моля проверете в PDF директория")
                 drawings = glob.glob(dirpath + "/" + str(docnum.text) + "*.dxf")
                 if len(drawings) > 0:
+                    dxf = True
                     makesvg(drawings, dirpath)
                     makepdf(dirpath)
-                    return dxf is True
+                    return dxf
                 else:
-                    logger.error(str(scetch.text + ".dxf") + ' не бе намерен в целевата директория')
+                    pass
             mem['item'] = item.text
             mem['field'] = field.text
             if clap is None or clap.text == 'false':

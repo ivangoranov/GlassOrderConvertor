@@ -1,5 +1,5 @@
 pyinstaller --distpath ./ --noconfirm --log-level WARN ^
-    -F -n GOC --windowed ^
+    -F -n GOC --nowindowed ^
     --add-data="Lib\site-packages\tinycss2\VERSION;." ^
     --hidden-import ezdxf ^
     --hidden-import MainProgramDefinitions ^

@@ -5,6 +5,7 @@ import datetime
 import glob
 import csv
 import os
+import shutil
 import time
 from datetime import datetime
 from csv import DictWriter
@@ -87,19 +88,14 @@ def soup_cooking(file, dirpath, dxf=False, msg=None):
                 sbkey = member.findNext('sashbardata').sashbar_key
                 sbdesc = member.findNext('sashbardata').sashbar_text
             clap = member.findNext('pressure_balance')
-            if arch == 0 and spros == 0:
-                return dxf
+            if member.findPrevious("dxfsketch").isSelfClosing:
                 pass
             else:
                 docnum = member.findPrevious('document_number')
                 drawings = glob.glob(dirpath + "/" + str(docnum.text) + "*.dxf")
-                if len(drawings) > 0:
-                    dxf = True
-                    makesvg(drawings, dirpath)
-                    makepdf(dirpath)
-                    return dxf
-                else:
-                    pass
+                makesvg(drawings, dirpath)
+                makepdf(dirpath)
+                raise Warning('Има допълнителни чертежи %s', str(drawings))
             mem['item'] = item.text
             mem['field'] = field.text
             if clap is None or clap.text == 'false':
@@ -135,7 +131,9 @@ def soup_cooking(file, dirpath, dxf=False, msg=None):
             if instkind.text == 'MONTAGEART_INFERTIGUNG':
                 mem['barcode'] = mem.text
             else:
-                mem['barcode'] = ''
+                os.remove(str(f_output))
+                raise Exception("Заявката няма нужда от обработка %s", member.findPrevious('document_number'))
+                break
             row = {'ITEM': mem['item'], 'DESCRIPTION': mem['desc'], 'HEIGHT': mem['height'],
                    'WIDTH': mem['width'],
                    'ALU_spacer': mem['spacer'], 'BARCODE': mem['barcode'], 'FIELD': mem['field'],
@@ -144,22 +142,33 @@ def soup_cooking(file, dirpath, dxf=False, msg=None):
 
 
 def sortfiles(file, dirpath):
-    with open(str(file), encoding='UTF-8') as f_input:
-        cfile = str(file).replace('.xml', '.csv')
-        xml = f_input.read()
-        soup = BeautifulSoup(xml, 'xml')
-        deliveryinfo = soup.find('order_remark_mawi')
-        deliverydate = soup.find('glasses_delivery_date_mawi').text
-        deliverydate_obj = datetime.strptime(deliverydate, '%Y-%m-%d')
-        deliverydatestr = deliverydate_obj.strftime('%d.%m.%Y')
-        mawiorderno = str(cfile)[-13:]
-        os.rename(cfile, (dirpath + '/GlassPurchaseOrders/mawi_csv/' + "Order_" + str(deliveryinfo.text) + "_" + str(
-            deliverydatestr) + str(mawiorderno)))
-    os.rename(file, str(file).replace(dirpath, dirpath + '/success/'))
+    if os.path.exists(file):
+        with open(str(file), encoding='UTF-8') as f_input:
+            cfile = glob.glob(dirpath + '/*.csv')
+            if len(cfile) != 0:
+                xml = f_input.read()
+                soup = BeautifulSoup(xml, 'xml')
+                deliveryinfo = soup.find('order_remark_mawi')
+                deliverydate = soup.find('glasses_delivery_date_mawi').text
+                deliverydate_obj = datetime.strptime(deliverydate, '%Y-%m-%d')
+                deliverydatestr = deliverydate_obj.strftime('%d.%m.%Y')
+                mawiorderno = str(cfile). replace("['",'').replace("']", '')[-13:]
+                os.rename(str(cfile). replace("['",'').replace("']", ''), (dirpath + '/GlassPurchaseOrders/mawi_csv/' + "Order_" + str(deliveryinfo.text) + "_" + str(
+                    deliverydatestr) + str(mawiorderno)))
+                if os.path.exists("G:/Shared drives/TEOLINO Supply Chain Management/T - Supply Chain Management - Документи/ТЕОЛИНО/Стъклопакети/"):
+                    shutil.move(str(dirpath + '/GlassPurchaseOrders/mawi_csv/' + "Order_" + str(deliveryinfo.text) + "_" + str(
+                    deliverydatestr) + str(mawiorderno)), "G:/Shared drives/TEOLINO Supply Chain Management/T - Supply Chain Management - Документи/ТЕОЛИНО/Стъклопакети/")
+                else:
+                    pass
+            else:
+                pass
+        os.rename(file, str(file).replace(dirpath, dirpath + '/success/'))
+    elif os.path.exists(str(file).replace('.xml', '.csv')):
+        os.remove(str(file).replace('.xml', '.csv'))
 
 
 def deloldlog(days=0):
-    file = glob.glob('/log/*.log')
+    file = glob.glob('log/*.log')
     for f in file:
         file_time = os.path.getmtime(f)
         if (time.time() - file_time) / 3600 > 24 * days:

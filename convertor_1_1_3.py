@@ -73,18 +73,23 @@ class GUI(tk.Frame):
 def main():
     dirpath = str(tk.filedialog.askdirectory()).replace("['", "").replace("']", "")
     xml_file = glob.glob(dirpath + "/*.xml")
+    MainProgramDefinitions.deloldlog(days=1)
     if len(xml_file) >= 1:
         for x in xml_file:
             file = x
-            logger.info('Отварям файл:  %s', str(file).replace(dirpath, ""))
             try:
                 soup_cooking(file, dirpath)
+            except Warning:
+                logger.info('Има допълнителни чертежи към %s', file)
+                pass
+            except Exception:
+                logger.info("Заявката няма нужда от обработка %s", str(file).replace(dirpath, ''))
+                os.remove(file)
             except:
                 logger.exception("Настъпи неочаквана грешка %s", "Моля проверете заявките")
                 pass
             try:
                 sortfiles(file, dirpath)
-                logger.info("Документ:" + str(file).replace(dirpath, '') + " бе конвертиран успешно")
             except:
                 logger.exception('Грешка при местене на файл / %s', str(file).replace(dirpath, '') + 'моля опитайте отново')
                 pass
@@ -95,10 +100,14 @@ def main():
 
 
 def gotodir(dirpath):
-    os.system("start " + str(dirpath) + "/GlassPurchaseOrders/")
+    if os.path.exists(
+            "G:/Shared drives/TEOLINO Supply Chain Management/T - Supply Chain Management - Документи/ТЕОЛИНО/Стъклопакети/"):
+        os.system("start G:/Shared drives/TEOLINO Supply Chain Management/T - Supply Chain Management - Документи/ТЕОЛИНО/Стъклопакети/")
+    else:
+        os.system("start " + str(dirpath) + "/GlassPurchaseOrders")
 
 
-################################################################################
+########################################################################################################################
 # Read commandline arguments
 #
 def get_arguments():
